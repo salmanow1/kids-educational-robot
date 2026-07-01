@@ -1,0 +1,29 @@
+name: Educational Robot Daily Publisher
+
+on:
+  schedule:
+    - cron: '0 12 * * *' # سينطلق الروبوت ذاتياً ومجاناً في الخلفية يومياً الساعة 12 ظهراً
+  workflow_dispatch: # يمنحك زراً لتجربته وتشغيله فوراً بيدك في أي وقت
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker and Run Robot
+      run: |
+        docker build -t kids-robot .
+        docker run --name active-robot kids-robot
+        
+    - name: Save Next Day Character Progress
+      run: |
+        git config --global user.name "salmanwo-bot"
+        git config --global user.email "bot@salmanwo.com"
+        git add progress.txt
+        git commit -m "تحديث تقدم الحروف لليوم التالي [Skip CI]" || exit 0
+        git push
