@@ -128,4 +128,4 @@ def build_perfect_kids_video():
     print("🚀 تم دمج كافة الصور الست والملفات الصوتية بنجاح واكتمل الفيديو التعليمي!")
 
 if __name__ == "__main__":
-    build_perfect_video()
+    build_perfect_kids_video()
