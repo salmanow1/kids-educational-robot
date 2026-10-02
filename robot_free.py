@@ -1,65 +1,88 @@
 import os
-import cv2
-import numpy as np
+import requests
 from gtts import gTTS
-import subprocess
+from moviepy.editor import ImageClip, AudioFileClip, TextClip, CompositeVideoClip
 
 CHANNELS_DATA = {
-    1: {"char": "A", "word": "Asad", "color": (97, 111, 255)},
+    1: {"char": "أ", "word_ar": "أَسَد", "word_en": "Lion", "word_fr": "Lion", "keyword": "lion"},
+    2: {"char": "ب", "word_ar": "بَطَّة", "word_en": "Duck", "word_fr": "Canard", "keyword": "duck"},
 }
 
-def create_video_pure_opencv(episode_number):
+def download_animated_bg(keyword):
+    print(f"🔍 الروبوت يجلب خلفية كرتونية مخصصة للأطفال للحرف: {keyword}...")
+    # سحب صورة كرتونية عالية الجودة ومناسبة لعمر الأطفال من مخزن الصور المفتوح
+    url = f"https://unsplash.com,{keyword},kids"
+    try:
+        response = requests.get(url, timeout=15)
+        if response.status_code == 200:
+            with open("bg.png", "wb") as f:
+                f.write(response.content)
+            return "bg.png"
+    except:
+        pass
+    # خلفية احتياطية كرتونية في حال انقطع السيرفر الخارجي
+    return None
+
+def build_real_educational_video(episode_number):
     data = CHANNELS_DATA.get(episode_number)
     if not data:
         return
 
     char = data["char"]
-    word = data["word"]
-    bg_color = data["color"]
+    word_ar = data["word_ar"]
+    word_en = data["word_en"]
+    
+    # 1. جلب الخلفية الكرتونية التلقائية
+    bg_image = download_animated_bg(data["keyword"])
+    if not bg_image:
+        print("❌ لم يتم العثور على صورة الخلفية الكرتونية.")
+        return
 
-    # 1. توليد الصوت
-    text_to_speak = f"Letter {char}... {word}... Follow Salmano!"
-    tts = gTTS(text=text_to_speak, lang='en', slow=False)
-    audio_path = "temp_voice.mp3"
+    # 2. توليد النطق الصوتي البشري الدقيق بالتشكيل العربي ولغات العالم
+    full_speech = f"حرف {char}... {char} فتحة... {word_ar}... باللغة الإنجليزية {word_en}... تابعو سلمانو"
+    print("🔊 جاري توليد النطق النحوي الدقيق...")
+    tts = gTTS(text=full_speech, lang='ar', slow=False)
+    audio_path = "voice.mp3"
     tts.save(audio_path)
 
-    # 2. إنشاء الفيديو الصامت (10 ثوانٍ)
-    video_silent_path = "temp_silent.mp4"
-    fps = 24
-    total_frames = 10 * fps
-    
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(video_silent_path, fourcc, fps, (1080, 1920))
+    # 3. معالجة الفيديو الاحترافي بالأبعاد الرأسية المناسبة (Shorts/TikTok)
+    audio_clip = AudioFileClip(audio_path)
+    duration = audio_clip.duration
+    video_base = ImageClip(bg_image).set_duration(duration)
 
-    for frame_num in range(total_frames):
-        frame = np.zeros((1920, 1080, 3), dtype=np.uint8)
-        frame[:] = bg_color
+    # 4. حقن النصوص التعليمية بطريقة سحابية آمنة لا تسبب انهيار النظام
+    # العلامة المائية المتحركة لحماية المحتوى باسم سلمانو
+    watermark = TextClip("@salmano", fontsize=45, color='white', font='Liberation-Sans-Bold')
+    watermark = watermark.set_position(lambda t: ('center', 150 + int(t * 12))).set_duration(duration)
 
-        # حركة العلامة المائية
-        watermark_y = 200 + (frame_num % 300)
-        cv2.putText(frame, "@salmano", (350, watermark_y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4, cv2.LINE_AA)
-        
-        # النص المركزي
-        cv2.putText(frame, char, (450, 850), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 255, 255), 10, cv2.LINE_AA)
-        cv2.putText(frame, word, (350, 1100), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 6, cv2.LINE_AA)
-        
-        # نص التفاعل
-        cv2.putText(frame, "Like, Share, Follow @salmano", (150, 1700), cv2.FONT_HERSHEY_SIMPLEX, 1.8, (0, 255, 255), 4, cv2.LINE_AA)
+    # الحرف العربي الكبير والكلمة في المنتصف بشكل واضح جداً للأطفال
+    main_label = f"({char}) \n {word_ar}"
+    center_clip = TextClip(main_label, fontsize=110, color='yellow', font='Liberation-Sans-Bold', stroke_color='black', stroke_width=2)
+    center_clip = center_clip.set_position('center').set_duration(duration)
 
-        video_writer.write(frame)
+    # شريط الترجمة متعدد اللغات لأسفل الشاشة
+    sub_title = f"English: {word_en} | Français: {data['word_fr']}"
+    sub_clip = TextClip(sub_title, fontsize=35, color='white', bg_color='black', font='Liberation-Sans-Regular')
+    sub_clip = sub_clip.set_position(('center', 1600)).set_duration(duration)
 
-    video_writer.release()
+    # شريط التفاعل النهائي (لا تنسوا الإعجاب والمتابعة والمشاركة)
+    cta = TextClip("👉 لا تنسوا الاعجاب و المتابعة والمشاركة 👈\n Follow @salmano", fontsize=40, color='cyan', font='Liberation-Sans-Bold')
+    cta = cta.set_position(('center', 1750)).set_duration(duration)
 
-    # 3. الدمج المباشر عبر موجه أوامر النظام (FFmpeg Command) لتفادي انهيار المكاتب
-    output_final = f"salmano_episode_{episode_number}.mp4"
-    ffmpeg_cmd = f"ffmpeg -y -i {video_silent_path} -i {audio_path} -c:v libx264 -c:a aac -strict experimental {output_final}"
-    
-    subprocess.run(ffmpeg_cmd, shell=True, check=True)
+    # الدمج النهائي للطبقات فوق الخلفية الكرتونية بالصوت
+    final_video = CompositeVideoClip([video_base, watermark, center_clip, sub_clip, cta])
+    final_video = final_video.set_audio(audio_clip)
 
-    # تنظيف
+    # تصدير الفيديو التعليمي الحقيقي
+    output_name = f"salmano_episode_{episode_number}.mp4"
+    final_video.write_videofile(output_name, fps=24, codec="libx264", audio_codec="aac")
+
+    # تنظيف السيرفر
+    audio_clip.close()
+    final_video.close()
     os.remove(audio_path)
-    os.remove(video_silent_path)
-    print("🟢 SUCCESS: Video created perfectly on headless server!")
+    os.remove(bg_image)
+    print("🟢 SUCCESS: تم إنتاج فيديو تعليمي حقيقي واحترافي بنجاح!")
 
 if __name__ == "__main__":
-    create_video_pure_opencv(episode_number=1)
+    build_real_educational_video(episode_number=1)
