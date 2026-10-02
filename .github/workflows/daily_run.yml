@@ -25,7 +25,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pip install gtts moviepy opencv-python numpy
+        pip install gtts opencv-python numpy
 
     - name: Run Video Robot
       run: |
