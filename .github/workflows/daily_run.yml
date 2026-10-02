@@ -2,9 +2,8 @@ name: Educational Robot Daily Publisher
 
 on:
   schedule:
-    # ينطلق الروبوت ذاتياً ومؤتمتاً في الخلفية يومياً الساعة 5:00 مساءً بتوقيت مكة (2:00 بتوقيت جرينتش)
     - cron: '0 14 * * *'
-  workflow_dispatch: # يتيح لك تشغيله فوراً بيدك في أي وقت
+  workflow_dispatch:
 
 jobs:
   build-and-run:
@@ -19,14 +18,14 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install FFmpeg and Fonts
+    - name: Install System FFmpeg
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg ttf-mscorefonts-installer fonts-liberation
+        sudo apt-get install -y ffmpeg
 
     - name: Install Dependencies
       run: |
-        pip install gtts moviepy requests
+        pip install gtts moviepy opencv-python numpy
 
     - name: Run Video Robot
       run: |
