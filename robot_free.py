@@ -18,7 +18,7 @@ def download_free_image(keyword):
     if response.status_code == 200:
         with open("downloaded_bg.png", "wb") as f:
             f.write(response.content)
-        print("📥 تم تحميل الصورة👑 الناشئة بنجاح من الإنترنت!")
+        print("📥 تم تحميل الصورة الخلفية المناسبة بنجاح من الإنترنت!")
         return "downloaded_bg.png"
     else:
         raise Exception("❌ فشل الاتصال بموقع الصور الخارجي.")
