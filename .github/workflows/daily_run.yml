@@ -1,32 +1,5 @@
-name: Educational Robot Daily Publisher
-
-on:
-  schedule:
-    - cron: '0 14 * * *'
-  workflow_dispatch:
-
-jobs:
-  build-and-run:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: حفظ وتصدير الفيديو النهائي
+      uses: actions/upload-artifact@v4
       with:
-        python-version: '3.10'
-
-    - name: Install System FFmpeg
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
-
-    - name: Install Dependencies
-      run: |
-        pip install gtts opencv-python numpy
-
-    - name: Run Video Robot
-      run: |
-        python robot_free.py
+        name: salmano-educational-video
+        path: salmano_episode_*.mp4
