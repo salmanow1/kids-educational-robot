@@ -1,34 +1,74 @@
-name: Educational Robot Daily Publisher
+import os
+import numpy as np
+import cv2
+from gtts import gTTS
+from moviepy.editor import AudioFileClip, VideoFileClip
 
-on:
-  schedule:
-    - cron: '0 14 * * *'
-  workflow_dispatch:
+CHANNELS_DATA = {
+    1: {"char": "A", "word": "Asad", "color": (97, 111, 255)}, # OpenCV uses BGR (Redish Coral)
+    2: {"char": "B", "word": "Batta", "color": (226, 144, 74)},
+}
 
-jobs:
-  build-and-run:
-    runs-on: ubuntu-latest
+def create_video_opencv(episode_number):
+    data = CHANNELS_DATA.get(episode_number)
+    if not data:
+        return
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    char = data["char"]
+    word = data["word"]
+    bg_color = data["color"]
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+    # 1. توليد الصوت ونطق الحرف
+    text_to_speak = f"Letter {char}... {word}... Follow Salmano Channel!"
+    tts = gTTS(text=text_to_speak, lang='en', slow=False)
+    audio_path = "temp_voice.mp3"
+    tts.save(audio_path)
 
-    - name: Install Video Tools and ImageMagick
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg imagemagick ttf-mscorefonts-installer fonts-liberation
-        # سطر سحري لكسر حماية النظام والسماح لبرنامج الأتمتة بكتابة النصوص العربية
-        sudo sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<policy domain="path" rights="read|write" pattern="@\*"/g' /etc/ImageMagick-6/policy.xml
+    # معرفة مدة الصوت
+    audio_clip = AudioFileClip(audio_path)
+    duration = int(audio_clip.duration) + 1
+    fps = 24
+    total_frames = duration * fps
 
-    - name: Install Dependencies
-      run: |
-        pip install gtts moviepy requests
+    # 2. إنشاء الفيديو برمجياً بواسطة OpenCV كمصفوفات صور
+    video_path = "temp_silent.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(video_path, fourcc, fps, (1080, 1920))
 
-    - name: Run Video Robot
-      run: |
-        python robot_free.py
+    for frame_num in range(total_frames):
+        # خلفية ملونة ثابته
+        frame = np.zeros((1920, 1080, 3), dtype=np.uint8)
+        frame[:] = bg_color
+
+        # تحريك العلامة المائية ببطء في الشاشة @salmano
+        watermark_y = 200 + (frame_num % 300)
+        cv2.putText(frame, "@salmano", (350, watermark_y), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4, cv2.LINE_AA)
+
+        # النص المركزي (الحرف والكلمة)
+        cv2.putText(frame, char, (450, 850), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 255, 255), 10, cv2.LINE_AA)
+        cv2.putText(frame, word, (350, 1100), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 6, cv2.LINE_AA)
+
+        # نص المتابعة والتفاعل في الأسفل
+        cv2.putText(frame, "Like, Share, Follow @salmano", (150, 1700), cv2.FONT_HERSHEY_SIMPLEX, 1.8, (0, 255, 255), 4, cv2.LINE_AA)
+
+        video_writer.write(frame)
+
+    video_writer.release()
+    audio_clip.close()
+
+    # 3. دمج الصوت مع الفيديو الصامت الناتج
+    silent_video = VideoFileClip(video_path)
+    audio_bg = AudioFileClip(audio_path)
+    final_video = silent_video.set_audio(audio_bg)
+    
+    final_video.write_videofile(f"salmano_episode_{episode_number}.mp4", fps=fps, codec="libx264", audio_codec="aac")
+    
+    # تنظيف الملفات المؤقتة
+    silent_video.close()
+    audio_bg.close()
+    os.remove(audio_path)
+    os.remove(video_path)
+    print("🟢 SUCCESS: Video created perfectly without fonts crash!")
+
+if __name__ == "__main__":
+    create_video_opencv(episode_number=1)
