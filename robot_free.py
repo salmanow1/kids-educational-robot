@@ -1,131 +1,74 @@
 import os
-import random
-import asyncio
 import requests
-import edge_tts
-from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, CompositeAudioClip, CompositeVideoClip, concatenate_audioclips
+from gtts import gTTS
+from moviepy.editor import ImageClip, AudioFileClip, TextClip, CompositeVideoClip
 
-# 1. توزيع روابطك الستة التي أرسلتها بدقة على مفاصل الفيديو التعليمي
-DRIVE_LINKS = {
-    "sonic_music": "https://google.com", # الأغنية الخلفية
-    "أ": {
-        "voice": "https://google.com",  # صوتك البشري لليوتيوب
-        "intro": "https://google.com__",  # المقدمة
-        "img_board": "https://google.com",  # السبورة الخلفية
-        "img_rabbit": "https://google.com", # صورة الأرنب الكرتوني
-        "img_ear": "https://google.com",    # صورة الأذن
-        "img_pitcher": "https://google.com",# صورة الإبريق
-        "img_apple": "https://google.com",  # صورة التفاحة والنملة
-        "img_extra": "https://google.com",  # الصورة السادسة الإضافية
-        "words": {
-            "ar": "أَرْنَبٌ - أُذُنٌ - إِبْرِيقٌ", # الضبط اللغوي النحوي الكامل بالحركات
-            "en": "Rabbit - Ear - Jug",
-            "fr": "Lapin - Oreille - Cruche",
-            "tr": "Tavşan - Kulak - Sürahi"
-        },
-        "color": "#FFDE59"
-    }
+# قاموس الحلقات اليومي: الحرف، الكلمة بالعربية، والكلمة بالإنجليزية للبحث عن صورتها
+CHANNELS_DATA = {
+    1: {"char": "أ", "word_ar": "أَسَد", "search_keyword": "lion cartoon"},
+    2: {"char": "ب", "word_ar": "بَطَّة", "search_keyword": "duck cartoon"},
+    3: {"char": "ت", "word_ar": "تِمْسَاح", "search_keyword": "crocodile cartoon"},
+    4: {"char": "و", "word_ar": "وَلَد", "search_keyword": "boy cartoon"},
 }
 
-def download_file(url, output_path):
-    """سحب ملفاتك المباشرة من جوجل درايف سحابياً فوراً وبسرعة فائقة"""
-    print(f"📥 جاري سحب الملف سحابياً: {output_path}")
-    response = requests.get(url, stream=True)
+def download_free_image(keyword):
+    print(f"🔍 الروبوت يتصل بمخزن الصور للبحث عن: {keyword}...")
+    url = f"https://unsplash.com?{keyword}"
+    response = requests.get(url)
     if response.status_code == 200:
-        with open(output_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk: f.write(chunk)
+        with open("downloaded_bg.png", "wb") as f:
+            f.write(response.content)
+        print("📥 تم تحميل الصورة👑 الناشئة بنجاح من الإنترنت!")
+        return "downloaded_bg.png"
     else:
-        print(f"⚠️ فشل السحب! تأكد أن روابط الدرايف مضبوطة على خيار (Anyone with the link)")
+        raise Exception("❌ فشل الاتصال بموقع الصور الخارجي.")
 
-async def generate_extra_voices(info):
-    """توليد نطق اللغات المتبقية (فرنسي وتركي) بالذكاء الاصطناعي مكملاً لصوتك البشري"""
-    fr_script = f"En français: {info['words']['fr']}."
-    tr_script = f"Türkçe olarak: {info['words']['tr']}."
-    await edge_tts.Communicate(fr_script, "fr-FR-EloiseNeural").save("fr_extra.mp3")
-    await edge_tts.Communicate(tr_script, "tr-TR-AhmetNeural").save("tr_extra.mp3")
+def build_multilang_video(episode_number):
+    data = CHANNELS_DATA.get(episode_number)
+    if not data:
+        print("🏁 تم إنهاء السلسلة بالكامل!")
+        return
 
-def build_perfect_kids_video():
-    current_char = "أ" 
-    info = DRIVE_LINKS[current_char]
-    print(f"🤖 الروبوت يقوم الآن بتركيب الصور والملفات الستة لإنتاج فيديو حرف: {current_char}")
+    char = data["char"]
+    word_ar = data["word_ar"]
     
-    # 2. تحميل كل ملفات الصور والصوت والخط العربي سحابياً لضمان النجاح بدون أخطاء السيرفر
-    download_file(DRIVE_LINKS["sonic_music"], "sonic.mp3")
-    download_file(info["voice"], "user_voice.mp3")
-    download_file(info["img_board"], "board.png")
-    download_file(info["img_rabbit"], "rabbit.png")
-    download_file(info["img_ear"], "ear.png")
-    download_file(info["img_pitcher"], "pitcher.png")
+    bg_image = download_free_image(data["search_keyword"])
+
+    arabic_speech = f"حرف {char}. {char} فتحة. {word_ar}."
+    english_speech = f"Letter {char} in Arabic means {data['search_keyword'].split()[0]}."
+    full_speech = f"{arabic_speech} ... {english_speech} ... Please Follow Salmano!"
+
+    print("🔊 جاري توليد الصوت البشري بالتشكيل...")
+    tts = gTTS(text=full_speech, lang='ar', slow=False)
+    audio_path = "temp_voice.mp3"
+    tts.save(audio_path)
+
+    audio_clip = AudioFileClip(audio_path)
+    video_duration = audio_clip.duration
+    video_clip = ImageClip(bg_image).set_duration(video_duration)
+
+    # العلامة المائية المتحركة لحماية حقوقك باسم سلمانو
+    watermark = TextClip("@salmano", fontsize=40, color='white')
+    watermark = watermark.set_position(lambda t: ('center', 100 + int(t * 15))).set_duration(video_duration)
+
+    # نصوص الترجمة التلقائية متعددة اللغات لأسفل الشاشة لجميع أطفال العالم
+    sub_text = f"عربي: {word_ar} | English: {data['search_keyword'].split()[0].capitalize()}"
+    subtitle_clip = TextClip(sub_text, fontsize=35, color='yellow', bg_color='black')
+    subtitle_clip = subtitle_clip.set_position(('center', 1600)).set_duration(video_duration)
+
+    # دعوة التفاعل والمتابعة في نهاية الفيديو
+    cta = TextClip("لا تنسوا الاعجاب و المتابعة والمشاركة \n Follow @salmano", fontsize=38, color='cyan')
+    cta = cta.set_position(('center', 1750)).set_duration(video_duration)
+
+    final_video = CompositeVideoClip([video_clip, watermark, subtitle_clip, cta])
+    final_video = final_video.set_audio(audio_clip)
+
+    output_name = f"salmano_episode_{episode_number}.mp4"
+    final_video.write_videofile(output_name, fps=24, codec="libx264", audio_codec="aac")
     
-    font_url = "https://github.com"
-    download_file(font_url, "amiri.ttf")
-    
-    # توليد الأصوات التكميلية (فرنسي وتركي)
-    asyncio.run(generate_extra_voices(info))
-    
-    # 3. الهندسة الصوتية (تطابق ومزج صوتك مع اللغات وأغنية السونك المرحة)
-    user_voice = AudioFileClip("user_voice.mp3")
-    fr_voice = AudioFileClip("fr_extra.mp3")
-    tr_voice = AudioFileClip("tr_extra.mp3")
-    
-    # دمج الأصوات بالتوالي (صوتك أولاً ثم الفرنسي ثم التركي)
-    full_speech = concatenate_audioclips([user_voice, fr_voice, tr_voice])
-    video_duration = full_speech.duration
-    
-    # ضبط وقص موسيقى السونك التفاعلية لتتطابق بدقة هندسية وتستمر بمرح متزامن حتى نهاية الصوت
-    sonic_background = AudioFileClip("sonic.mp3").subclip(0, video_duration).volumex(0.15) 
-    final_audio_track = CompositeAudioClip([full_speech, sonic_background])
-    
-    # 4. معالجة وتصميم لوحة العرض والكتابة النحوية المشكولة
-    bg_image = Image.open("board.png").resize((1080, 1920))
-    
-    # دمج وتثبيت الصور الكرتونية الجاهزة (الأرنب) برمجياً وسط السبورة الخلفية
-    try:
-        rabbit_img = Image.open("rabbit.png").resize((400, 400))
-        bg_image.paste(rabbit_img, (340, 1000), rabbit_img.convert("RGBA") if rabbit_img.mode != "RGBA" else None)
-    except Exception as e:
-        print("💡 تم تركيب الصور الكرتونية كخلفيات وعناصر دمج بنجاح.")
-        
-    draw = ImageDraw.Draw(bg_image)
-    draw.rectangle([30, 30, 1050, 1890], outline="#FFFFFF", width=30)
-    
-    arabic_font = ImageFont.truetype("amiri.ttf", 65)
-    english_font = ImageFont.truetype("amiri.ttf", 50)
-    
-    # كتابة الكلمات بالتشكيل الكامل والنحو على السبورة الكرتونية لتظهر بوضوح للأطفال
-    draw.text((540, 400), f"حَرْفُ ({current_char})", fill="#FFFFFF", font=arabic_font, anchor="mm")
-    draw.text((540, 600), info["words"]["ar"], fill="#FFDE59", font=arabic_font, anchor="mm")
-    draw.text((540, 800), info["words"]["en"], fill="#FFFFFF", font=english_font, anchor="mm")
-    bg_image.save("final_frame.png")
-    
-    # 5. بناء الفيديو الرئيسي
-    video_clip = ImageClip("final_frame.png").set_duration(video_duration).set_audio(final_audio_track)
-    
-    # 6. العلامة المائية المتحركة عشوائياً باسم salmanwo (لحماية الفيديو من السرقة)
-    def move_watermark(t):
-        random.seed(int(t * 2)) # تتحرك وتتغير عشوائياً مرتين كل ثانية في زوايا مختلفة
-        return (random.randint(60, 600), random.randint(150, 1500))
-        
-    wm_img = Image.new("RGBA", (350, 90), (0, 0, 0, 0))
-    wm_draw = ImageDraw.Draw(wm_img)
-    wm_draw.text((15, 15), "salmanwo", fill=(255, 255, 255, 120), font=english_font)
-    wm_img.save("wm.png")
-    wm_clip = ImageClip("wm.png").set_duration(video_duration).set_position(move_watermark)
-    
-    # 7. تصدير وصناعة الفيديو العمودي والصورة المصغرة القياسية لليوتيوب
-    final_video = CompositeVideoClip([video_clip, wm_clip], size=(1080, 1920))
-    final_video.write_videofile("output.mp4", fps=24, codec="libx264", audio_codec="aac")
-    
-    # تصميم غلاف الصورة المصغرة (Thumbnail) بدقة 1280x720 لزيادة النقرات والمشاهدات
-    thumb = Image.new("RGB", (1280, 720), info["color"])
-    t_draw = ImageDraw.Draw(thumb)
-    t_draw.rectangle([15, 15, 1265, 705], outline="#FFFFFF", width=15)
-    t_draw.text((640, 360), f"حرف {current_char} - {info['words']['ar']}", fill="#FFFFFF", font=arabic_font, anchor="mm")
-    thumb.save("thumbnail.png")
-    
-    print("🚀 تم دمج كافة الصور الست والملفات الصوتية بنجاح واكتمل الفيديو التعليمي!")
+    os.remove(audio_path)
+    os.remove(bg_image)
+    print(f"🟢 تم إنتاج الحلقة {episode_number} بنجاح تام!")
 
 if __name__ == "__main__":
-    build_perfect_kids_video()
+    build_multilang_video(episode_number=1)
