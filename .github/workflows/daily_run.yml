@@ -2,39 +2,24 @@ name: Educational Robot Daily Publisher
 
 on:
   schedule:
-    - cron: '0 14 * * *'
-  workflow_dispatch:
+    - cron: '0 16 * * *' # ينشر تلقائياً كل يوم الساعة 4 مساءً
+  workflow_dispatch: # يتيح لك التشغيل اليدوي
 
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4 # تم التحديث للإصدار 4 المتوافق
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5 # تم التحديث للإصدار 5 المتوافق
+        with:
+          python-version: '3.10'
 
-    - name: Install System Video Tools and Fonts
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg imagemagick fonts-liberation
-        # كسر حماية السيرفر للسماح بكتابة النصوص فوق الفيديوهات
-        sudo sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<policy domain="path" rights="read|write" pattern="@\*"/g' /etc/ImageMagick-6/policy.xml
+      - name: Install dependencies
+        run: |
+          pip install requests
 
-    - name: Install Dependencies
-      run: |
-        pip install gtts moviepy requests
-
-    - name: Run Video Robot
-      run: |
-        python robot_free.py
-
-    - name: Upload Video Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: salmano-educational-video
-        path: salmano_episode_1.mp4
+      - name: Run Salmano Robot
+        run: python main.py
