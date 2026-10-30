@@ -1,32 +1,4 @@
-name: Educational Robot Daily Publisher
-
-on:
-  schedule:
-    - cron: '0 16 * * *'
-  workflow_dispatch:
-
-jobs:
-  build-and-run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
       - name: Install dependencies
         run: |
-          pip install requests
-
-      - name: Run Salmano Robot
-        run: python main.py
-
-      # 🎬 الأمر السحري الجديد لإظهار الفيديوهات لك وتنزيلها على جهازك
-      - name: Upload Finished Videos for Download
-        uses: actions/upload-artifact@v4
-        with:
-          name: Salmano-Daily-Videos
-          path: "*.mp4" # يقوم بسحب أي ملف فيديو ينشئه الروبوت ويضعه أمامك فوراً
+          python -m pip install --upgrade pip
+          pip install edge-tts requests moviepy pillow
